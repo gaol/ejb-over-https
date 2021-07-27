@@ -34,8 +34,9 @@ import java.util.Hashtable;
  */
 public class Main {
 
-    private static final String REMOTE_ENDPOINT = "https://localhost:8443/wildfly-services";
+    private static final String HTTP_ENDPOINT = "http://localhost:8080/wildfly-services";
 
+    private static final String HTTPS_ENDPOINT = "https://localhost:8443/wildfly-services";
     public static void main(String[] args) throws Exception {
         testEchoMessageOverHTTPS();
     }
@@ -50,11 +51,14 @@ public class Main {
         for (int i = 0; i < Integer.getInteger("loops.size", 10); ++i) {
             System.out.println("\nExecuting " + (i + 1) + " times....\n");
 
+            final String endpointURL = Boolean.getBoolean("ssl") ? HTTPS_ENDPOINT : HTTP_ENDPOINT;
+            System.out.println("EndPoint URL: " + endpointURL);
             System.out.println("Clear Session Id...");
-            WildflyHttpContext.getCurrent().getTargetContext(new URI(REMOTE_ENDPOINT)).clearSessionId();
-            final EchoService echoService = lookupEchoService();
+            URI uri = new URI(endpointURL);
+            WildflyHttpContext.getCurrent().getTargetContext(uri).clearSessionId();
+            final EchoService echoService = lookupEchoService(endpointURL);
             System.out.println("Set up Strong Affinity to the remote endpoint.");
-            EJBClient.setStrongAffinity(echoService, URIAffinity.forUri(new URI(REMOTE_ENDPOINT)));
+            EJBClient.setStrongAffinity(echoService, URIAffinity.forUri(uri));
 
             String messageSent = "Hello World!";
             String message = echoService.echo(messageSent);
@@ -74,10 +78,10 @@ public class Main {
         }
     }
 
-    private static EchoService lookupEchoService() throws NamingException {
+    private static EchoService lookupEchoService(String endpointURL) throws NamingException {
         final Hashtable<String, String> jndiProperties = new Hashtable<>();
         jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
-        jndiProperties.put(Context.PROVIDER_URL,"https://localhost:8443/wildfly-services");
+        jndiProperties.put(Context.PROVIDER_URL, endpointURL);
         final Context context = new InitialContext(jndiProperties);
 
         return (EchoService) context.lookup("ejb:/ejb-over-https-server-side/EchoServiceBean!"
