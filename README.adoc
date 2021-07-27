@@ -1,9 +1,9 @@
 include::../shared-doc/attributes.adoc[]
 
-= ejb-remote: Remote EJB Client Example
-:author: Jaikiran Pai, Mike Musgrove
+= ejb-over-https: Remote EJB Client Over HTTPS
+:author: Lin Gao
 :level: Intermediate
-:technologies: EJB, JNDI
+:technologies: EJB, JNDI, HTTPS
 
 [abstract]
 The `ejb-remote` quickstart uses EJB and JNDI to demonstrate how to access an EJB, deployed to {productName}, from a remote Java client application.

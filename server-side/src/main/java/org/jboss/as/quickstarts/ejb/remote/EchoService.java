@@ -14,16 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.as.quickstarts.ejb.remote.stateless;
+package org.jboss.as.quickstarts.ejb.remote;
 
 /**
- * @author Jaikiran Pai
+ * @author Lin Gao
  */
-public interface RemoteCalculator {
-
-    int add(int a, int b);
-
-    int subtract(int a, int b);
+public interface EchoService {
 
     String echo(String message);
 }

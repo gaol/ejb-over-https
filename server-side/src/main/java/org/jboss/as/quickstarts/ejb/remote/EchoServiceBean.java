@@ -14,27 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.as.quickstarts.ejb.remote.stateless;
+package org.jboss.as.quickstarts.ejb.remote;
 
 import javax.ejb.Remote;
 import javax.ejb.Stateless;
 
 /**
- * @author Jaikiran Pai
+ * @author Lin Gao
  */
 @Stateless
-@Remote(RemoteCalculator.class)
-public class CalculatorBean implements RemoteCalculator {
-
-    @Override
-    public int add(int a, int b) {
-        return a + b;
-    }
-
-    @Override
-    public int subtract(int a, int b) {
-        return a - b;
-    }
+@Remote(EchoService.class)
+public class EchoServiceBean implements EchoService {
 
     @Override
     public String echo(String message) {

@@ -41,7 +41,7 @@
                     <arguments>
                         <argument>-classpath</argument>
                         <classpath></classpath>
-                        <argument>org.jboss.as.quickstarts.ejb.remote.client.RemoteEJBClient</argument>
+                        <argument>org.jboss.as.quickstarts.ejb.remote.client.Main</argument>
                     </arguments>
                 </configuration>
             </plugin>
