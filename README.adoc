@@ -1,185 +1,212 @@
-include::../shared-doc/attributes.adoc[]
-
 = ejb-over-https: Remote EJB Client Over HTTPS
 :author: Lin Gao
 :level: Intermediate
 :technologies: EJB, JNDI, HTTPS
 
 [abstract]
-The `ejb-remote` quickstart uses EJB and JNDI to demonstrate how to access an EJB, deployed to {productName}, from a remote Java client application.
-
-:standalone-server-type: default
-:archiveType: jar
-// Override the archive name
-:archiveDir: {artifactId}/server-side/target
-:archiveName: {artifactId}-server-side
+The `ejb-over-https` quickstart demonstrates how to invoke an EJB over HTTPS from a remote Java client application
 
 == What is it?
 
-The `ejb-remote` quickstart shows how to access an EJB from a remote Java client application. It demonstrates the use of EJB and JNDI in {productNameFull}.
+The `ejb-over-https` quickstart demonstrates how to invoke an EJB over HTTPS from a remote Java client application. It demonstrates how to set up SSL/TLS in both server side and client side and how to invoke remote EJB via HTTPS transport.
 
 There are two components to this example:
 
 . A server side component:
 +
-The server component is comprised of a stateful EJB and a stateless EJB. It provides both an EJB JAR that is deployed to the server and a JAR file containing the remote business interfaces required by the remote client application.
+The server component has a stateless EJB to just echo back the message sent to it. It provides both an EJB JAR that is deployed to the server and a JAR file containing the remote business interfaces required by the remote client application.
 
 . A remote client application that accesses the server component.
 +
-The remote client application depends on the remote business interfaces from the server component. This application looks up the stateless and stateful beans via JNDI and invokes a number of methods on them.
+The remote client application depends on the remote business interfaces from the server component. This application looks up the `EchoService` via JNDI/HTTP(S) and invokes `echo()` method with single `Hello Wolrd` and a large message.
 
-Each component is defined in its own standalone Maven module. The quickstart provides a top level Maven module to simplify the packaging of the artifacts.
+== How to play it
 
-// System Requirements
-include::../shared-doc/system-requirements.adoc[leveloffset=+1]
-// Use of {jbossHomeName}
-include::../shared-doc/use-of-jboss-home-name.adoc[leveloffset=+1]
-// Start the {productName} Standalone Server
-include::../shared-doc/start-the-standalone-server.adoc[leveloffset=+1]
-// Install the Quickstart Parent Artifact in Maven
-include::../shared-doc/install-quickstart-parent-artifact.adoc[leveloffset=+1]
-// Build and Deploy the Quickstart
-include::../shared-doc/build-and-deploy-the-quickstart.adoc[leveloffset=+1]
+There are some configurations you need to set up to play this quickstart, we are going to go through this quickstart first by plain HTTP, then set up SSL/TLS with HTTPS invocation, please follow the steps below.
 
-== Build and Run the Client Application
+=== Set up application user
+Because invoking EJB via HTTP transport does not support transparent authentication, you need to add an application user to be able to call remotely.
 
-. Navigate to the client subdirectory.
+. Add an application user
++
+[source, options="nowrap"]
+----
+$ ${JBOSS_HOME}/bin/add-user.sh -a -u 'quickstartUser' -p 'quickstartPwd1!'
+----
+
+. After adding the application user, you can start the jboss server.
++
+[source, options="nowrap"]
+----
+$ ${JBOSS_HOME}/bin/standalone.sh
+----
+
+=== Build the project and deploy the server side component
+
+. In the root directory of the quickstart, run the following command:
 +
 [source,options="nowrap"]
 ----
+$ mvn clean install
+----
+
+. Then navigate to the server-side subdirectory, run the following command:
++
+[source,options="nowrap"]
+----
+$ cd server-side
+$ mvn wildfly:deploy
+----
+
+Now you have deployed your EJB component(`EchoService`) into your JBoss server, let's see how to invoke it from remote client.
+
+=== Invoke remote EJB over plain HTTP
+
+Let's take a glance on the client code on how to invoke the remote EJB over HTTP(S):
+
+[source,options="nowrap",java]
+----
+    private static final String HTTP_ENDPOINT = "http://localhost:8080/wildfly-services";
+    private static final String HTTPS_ENDPOINT = "https://localhost:8443/wildfly-services";
+
+    public static void main(String[] args) throws Exception {
+        final String endpointURL = Boolean.getBoolean("ssl") ? HTTPS_ENDPOINT : HTTP_ENDPOINT;
+        final EchoService echoService = lookupEchoService(endpointURL);
+        String messageSent = "Hello World!";
+        String message = echoService.echo(messageSent);
+        if (!message.equals(messageSent)) {
+            throw new RuntimeException("Message echo back is not equal.");
+        }
+    }    
+
+    private static EchoService lookupEchoService(String endpointURL) throws NamingException {
+        final Hashtable<String, String> jndiProperties = new Hashtable<>();
+        jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+        jndiProperties.put(Context.PROVIDER_URL, endpointURL);
+        final Context context = new InitialContext(jndiProperties);
+        return (EchoService) context.lookup("ejb:/ejb-over-https-server-side/EchoServiceBean!"
+            + EchoService.class.getName());
+    }
+----
+
+The client code supports invoking remote EJB over both HTTP and HTTPS, you only need to use `-Dssl=false|true` to switch.
+
+There are nothing more to set up in the server side to be able to call remote EJB over plain HTTP, the following `wildfly-config.xml` is used in client side to invoke the remote EJB:
+
+[source,options="nowrap",xml]
+----
+<configuration>
+    <authentication-client xmlns="urn:elytron:1.0">
+        <authentication-rules>
+                    <rule use-configuration="default" />
+        </authentication-rules>
+        <authentication-configurations>
+            <configuration name="default">
+                <sasl-mechanism-selector selector="#ALL" />
+                <set-mechanism-properties>
+                    <property key="wildfly.sasl.local-user.quiet-auth" value="true" />
+                 </set-mechanism-properties>
+                <providers>
+                    <use-service-loader/>
+                </providers>
+                <!-- Used for EJB over HTTP, remoting invocations will use transparent auth-->
+                <set-user-name name="quickstartUser" />
+                <credentials>
+                    <clear-password password="quickstartPwd1!" />
+                </credentials>
+             </configuration>
+        </authentication-configurations>
+    </authentication-client>
+</configuration>
+----
+
+There is a branch `plain_http` in this quickstart which has the configuration already, you can switch to that branch and run the following command:
+
+[source, options="nowrap"]
+----
+$ git checkout plain_http
 $ cd ../client
+$ mvn -Dssl=false clean install exec:exec
 ----
 
-. Compile the client code.
-+
+> NOTE: you need to use `-Dssl=false` to force to use plain HTTP invocation in this quickstart.
+
+You will see some console output like:
+
+[source, options="nowrap"]
+----
+Executing 10 times....
+
+EndPoint URL: http://localhost:8080/wildfly-services
+Clear Session Id...
+Set up Strong Affinity to the remote endpoint.
+Large message count: 120000
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+----
+
+=== Set up SSL/TLS
+
+Now you have been able to invoke remote EJB via plain HTTP, as we all know, it is not secure, username and password are transferred in plain text, so let's set up SSL/TLS to have a secure transport.
+
+==== Set up SSL/TLS in server side
+
+There are 2 ways to setup SSL in server side, we use the default one predefined already in the JBoss server.
+
+By default, JBoss server generates a predefined keystore file wich is used for SSL communication on first access to HTTPS interface:
+
 [source,options="nowrap"]
 ----
-$ mvn clean compile
+$ curl -k https://localhost:8443/
 ----
 
-. Execute the client application within Maven.
-+
-[source,options="nowrap"]
+==== Set up SSL/TLS in client side
+
+After that, an `application.keystore` file is generated in `${JBOSS_HOME}/standalone/configuration/` directory, we can use that file as trustsore in client set up, or we can export the SSL certificate and import to a separate truststore for client use, in this example, we use it directly for simplicity, here is the `wildfly-config.xml` used for SSL communication:
+
+[source,options="nowrap",xml]
 ----
-$ mvn exec:exec
-----
-
-== Investigate the Console Output
-
-When the client application runs, it performs the following steps:
-
-. Obtains a stateless session bean instance.
-. Sends method invocations to the stateless bean to add two numbers, and then displays the result.
-. Sends a second invocation to the stateless bean subtract two numbers, and then displays the result.
-. Obtains a stateful session bean instance.
-. Sends several method invocations to the stateful bean to increment a field in the bean, displaying the result each time.
-. Sends several method invocations to the stateful bean to decrement a field in the bean, displaying the result each time.
-
-The following output is displayed in the terminal window:
-
-[source,options="nowrap"]
-----
-Obtained a remote stateless calculator for invocation
-Adding 204 and 340 via the remote stateless calculator deployed on the server
-Remote calculator returned sum = 544
-Subtracting 2332 from 3434 via the remote stateless calculator deployed on the server
-Remote calculator returned difference = 1102
-Obtained a remote stateful counter for invocation
-Counter will now be incremented 5 times
-Incrementing counter
-Count after increment is 1
-Incrementing counter
-Count after increment is 2
-Incrementing counter
-Count after increment is 3
-Incrementing counter
-Count after increment is 4
-Incrementing counter
-Count after increment is 5
-Counter will now be decremented 5 times
-Decrementing counter
-Count after decrement is 4
-Decrementing counter
-Count after decrement is 3
-Decrementing counter
-Count after decrement is 2
-Decrementing counter
-Count after decrement is 1
-Decrementing counter
-Count after decrement is 0
+<configuration>
+    <authentication-client xmlns="urn:elytron:1.0">
+        <authentication-rules>
+                    <rule use-configuration="default" />
+        </authentication-rules>
+        <ssl-context-rules>
+            <rule use-ssl-context="localssl" />
+        </ssl-context-rules>
+        <authentication-configurations>
+            <configuration name="default">
+                <sasl-mechanism-selector selector="#ALL" />
+                <set-mechanism-properties>
+                    <property key="wildfly.sasl.local-user.quiet-auth" value="true" />
+                 </set-mechanism-properties>
+                <providers>
+                    <use-service-loader/>
+                </providers>
+                <!-- Used for EJB over HTTP, remoting invocations will use transparent auth-->
+                <set-user-name name="quickstartUser" />
+                <credentials>
+                    <clear-password password="quickstartPwd1!" />
+                </credentials>
+             </configuration>
+        </authentication-configurations>
+        <key-stores>
+            <key-store name="localserver" type="JKS">
+               <file name="${JBOSS_HOME}/standalone/configuration/application.keystore" /> <!-- You need to update here pointing to your jboss home -->
+               <key-store-clear-password password="password" />
+            </key-store>
+        </key-stores>
+        <ssl-contexts>
+            <ssl-context name="localssl">
+                <trust-store key-store-name="localserver" />
+            </ssl-context>
+        </ssl-contexts>
+    </authentication-client>
+</configuration>
 ----
 
-Logging statements have been removed from this output here to make it clearer.
+You can find this set up in `main` branch in this quickstart.
 
-[[build_and_run_the_quickstart_as_an_executable_jar]]
-== Build and Run The Quickstart as an Executable JAR
-
-The remote client application can also be built as a standalone executable JAR with all of its dependencies.
-
-. Open a terminal and navigate to the ejb-remote/client quickstart directory
-+
-[source,options="nowrap"]
-----
-$ cd client
-----
-
-. Type the following in the command line:
-+
-[source,options="nowrap"]
-----
-$ mvn clean package assembly:single
-----
-
-. You can then run the executable JAR using the `java -jar` command. You will see the same console output as above.
-+
-[source,subs="attributes+",options="nowrap"]
-----
-$ java -jar target/{artifactId}-client-jar-with-dependencies.jar
-----
-
-== Undeploy the Archive
-
-To undeploy the server-side component from the {productName} server:
-
-. Navigate to the server-side subdirectory:
-+
-[source,options="nowrap"]
-----
-$ cd ../server-side
-----
-
-. Type the following command:
-+
-[source,options="nowrap"]
-----
-$ mvn wildfly:undeploy
-----
-
-== Using EJB over HTTP
-
-You can use HTTP as the transport for remote EJB invocations by specifying `-Dhttp=true` on both the Maven and command line based execution. This should not change the output, but it will use EJB over HTTP for the invocations. This means that each EJB request maps to a single HTTP request (actually HTTP/2 by default, if it is enabled on the server).
-
-Before you can use it, you need to set up a user on the server as HTTP does not support transparent authentication. The next section describes how to xref:add_the_application_user[add the authorized application user] so you can test the quickstart using HTTP as the transport.
-
-// Add the Authorized Application User
-include::../shared-doc/add-application-user.adoc[leveloffset=+1]
-// Run the Quickstart in Red Hat Developer Studio or Eclipse
-include::../shared-doc/run-the-quickstart-in-jboss-developer-studio.adoc[leveloffset=+1]
-
-// Additional Red Hat Developer Studio instructions
-This quickstart consists of multiple projects, so it deploys and runs differently in {JBDSProductName} than the other quickstarts.
-
-. Install the required Maven artifacts and deploy the server side of the quickstart project.
-
-** Right-click on the *{artifactId}-server-side* project and choose *Run As* -> *Maven Install*.
-** Right-click on the *{artifactId}-server-side* project and choose *Run As* -> *Run on Server*.
-. Build and run the client side of the quickstart project.
-
-** Right-click on the *{artifactId}-client* project and choose *Run As* -> *Java Application*.
-** In the *Select Java Application* window, choose *RemoteEJBClient - org.jboss.as.quickstarts.ejb.remote.client* and click *OK*.
-** The client output displays in the *Console* window.
-. To undeploy the project, right-click on the *{artifactId}-server-side* project and choose *Run As* -> *Maven build*. Enter `wildfly:undeploy` for the *Goals* and click *Run*.
-
-//  Debug the Application
-include::../shared-doc/debug-the-application.adoc[leveloffset=+1]
+Have Fun!
 
