@@ -14,6 +14,7 @@
 
     <properties>
         <ssl>true</ssl>
+        <jboss.home>${JBOSS_HOME}</jboss.home>
     </properties>
 
     <dependencies>
@@ -34,8 +35,13 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+              <directory>src/main/resources</directory>
+              <filtering>true</filtering>
+            </resource>
+          </resources>
         <plugins>
-
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

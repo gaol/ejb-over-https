@@ -44,7 +44,7 @@
         </authentication-configurations>
         <key-stores>
             <key-store name="localserver" type="JKS">
-               <file name="/home/lgao/sources/wildfly/wildfly/dist/target/jboss-eap-7.3/standalone/configuration/application.keystore" />
+               <file name="${jboss.home}/standalone/configuration/application.keystore" />
                <key-store-clear-password password="password" />
             </key-store>
         </key-stores>

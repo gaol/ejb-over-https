@@ -193,7 +193,7 @@ After that, an `application.keystore` file is generated in `${JBOSS_HOME}/standa
         </authentication-configurations>
         <key-stores>
             <key-store name="localserver" type="JKS">
-               <file name="${JBOSS_HOME}/standalone/configuration/application.keystore" /> <!-- You need to update here pointing to your jboss home -->
+               <file name="${jboss.home}/standalone/configuration/application.keystore" />
                <key-store-clear-password password="password" />
             </key-store>
         </key-stores>
@@ -206,7 +206,17 @@ After that, an `application.keystore` file is generated in `${JBOSS_HOME}/standa
 </configuration>
 ----
 
-You can find this set up in `main` branch in this quickstart.
+You can find this set up in `main` branch in this quickstart, then you can run the following commands to run the client application:
+
+[source, options="nowrap"]
+----
+$ git checkout main
+$ cd ../client
+$ export JBOSS_HOME=<PATH_TO_YOUR_JBOSS_HOME>
+$ mvn -Dssl=true clean install exec:exec
+----
+
+
 
 Have Fun!
 
