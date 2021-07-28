@@ -23,9 +23,6 @@
         <authentication-rules>
                     <rule use-configuration="default" />
         </authentication-rules>
-        <ssl-context-rules>
-            <rule use-ssl-context="localssl" />
-        </ssl-context-rules>
         <authentication-configurations>
             <configuration name="default">
                 <sasl-mechanism-selector selector="#ALL" />
@@ -42,16 +39,5 @@
                 </credentials>
              </configuration>
         </authentication-configurations>
-        <key-stores>
-            <key-store name="localserver" type="JKS">
-               <file name="/home/lgao/sources/wildfly/wildfly/dist/target/jboss-eap-7.3/standalone/configuration/application.keystore" />
-               <key-store-clear-password password="password" />
-            </key-store>
-        </key-stores>
-        <ssl-contexts>
-            <ssl-context name="localssl">
-                <trust-store key-store-name="localserver" />
-            </ssl-context>
-        </ssl-contexts>
     </authentication-client>
 </configuration>
